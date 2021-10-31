@@ -3,6 +3,7 @@
 import base64
 import datetime
 
+from algosdk.logic import get_application_address
 from algosdk.future import transaction
 from algosdk import account, mnemonic
 from algosdk.v2client import algod
@@ -10,7 +11,7 @@ from pyteal import compileTeal, Mode
 from vote import approval_program, clear_state_program
 
 # user declared account mnemonics
-creator_mnemonic = "lift clinic nose culture expand dilemma episode limit dog lamp security wreck devote pencil student dirt sail about claim focus quit sort feel about wrap"
+creator_mnemonic = "disagree salon thank cool envelope shove urge gravity demise arena large nephew found fine country tuna frozen view pact club wave wall alert above course"
 user_mnemonic = "estate elephant vibrant hat slogan unlock uniform short bicycle regret around able valley boil turkey always modify broccoli indicate fork together install address ability lounge"
 
 # user declared algod connection parameters. Node must have EnableDeveloperAPI set to true in its config
@@ -22,7 +23,9 @@ algod_token = ""
 # helper function to compile program source
 def compile_program(client, source_code):
     compile_response = client.compile(source_code)
+    print(compile_response)
     return base64.b64decode(compile_response["result"])
+    
 
 
 # helper function that converts a mnemonic passphrase into a private signing key
@@ -105,7 +108,8 @@ def create_app(
     transaction_response = client.pending_transaction_info(tx_id)
     app_id = transaction_response["application-index"]
     print("Created new app-id:", app_id)
-
+    appAddr = get_application_address(app_id)
+    print("Account: ", appAddr)
     return app_id
 
 
@@ -319,16 +323,16 @@ def main():
     approval_program_ast = approval_program()
     # compile program to TEAL assembly
     approval_program_teal = compileTeal(
-        approval_program_ast, mode=Mode.Application, version=4
+        approval_program_ast, mode=Mode.Application, version=5
     )
     # compile program to binary
     approval_program_compiled = compile_program(algod_client, approval_program_teal)
-
+    print(approval_program_compiled)
     # get PyTeal clear state program
     clear_state_program_ast = clear_state_program()
     # compile program to TEAL assembly
     clear_state_program_teal = compileTeal(
-        clear_state_program_ast, mode=Mode.Application, version=4
+        clear_state_program_ast, mode=Mode.Application, version=5
     )
     # compile program to binary
     clear_state_program_compiled = compile_program(

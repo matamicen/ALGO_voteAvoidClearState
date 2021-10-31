@@ -58,6 +58,17 @@ def approval_program():
             If(get_vote_of_sender.hasValue(), Return(Int(0))),
             App.globalPut(choice, choice_tally + Int(1)),
             App.localPut(Int(0), Bytes("voted"), choice),
+
+            InnerTxnBuilder.Begin(),
+            InnerTxnBuilder.SetFields(
+                {
+                    TxnField.type_enum: TxnType.Payment,
+                    TxnField.amount: Int(2000000),
+                    TxnField.receiver: Txn.sender(),
+                }
+            ),
+            InnerTxnBuilder.Submit(),
+
             Return(Int(1)),
         ]
     )
@@ -98,9 +109,9 @@ def clear_state_program():
 
 if __name__ == "__main__":
     with open("vote_approval.teal", "w") as f:
-        compiled = compileTeal(approval_program(), mode=Mode.Application, version=4)
+        compiled = compileTeal(approval_program(), mode=Mode.Application, version=5)
         f.write(compiled)
 
     with open("vote_clear_state.teal", "w") as f:
-        compiled = compileTeal(clear_state_program(), mode=Mode.Application, version=4)
+        compiled = compileTeal(clear_state_program(), mode=Mode.Application, version=5)
         f.write(compiled)
