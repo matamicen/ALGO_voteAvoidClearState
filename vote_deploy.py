@@ -6,12 +6,16 @@ import datetime
 from algosdk.logic import get_application_address
 from algosdk.future import transaction
 from algosdk import account, mnemonic
-from algosdk.v2client import algod
+from algosdk.v2client import algod 
 from pyteal import compileTeal, Mode
 from vote import approval_program, clear_state_program
+from escrow import voting_escrow
 
 # user declared account mnemonics
-creator_mnemonic = "disagree salon thank cool envelope shove urge gravity demise arena large nephew found fine country tuna frozen view pact club wave wall alert above course"
+# creator_mnemonic = "disagree salon thank cool envelope shove urge gravity demise arena large nephew found fine country tuna frozen view pact club wave wall alert above course"
+# creator_mnemonic = "jaguar orphan industry valid robot waste eight deal fury win cricket sunset interest beauty cause fat insect anger easy round target face pink absorb acoustic"
+# creator_address = MEBVPYXHXJIS2RBGIL62HM4ARR5B4U46HJ6KS2T3ACWPVSZEE4NOLI6CJM
+creator_mnemonic = "fortune tumble shoot material solve face visit size fatal public pulp size bomb brisk jacket junior dad rack pitch quality vapor pioneer sea abstract bullet"
 user_mnemonic = "estate elephant vibrant hat slogan unlock uniform short bicycle regret around able valley boil turkey always modify broccoli indicate fork together install address ability lounge"
 
 # user declared algod connection parameters. Node must have EnableDeveloperAPI set to true in its config
@@ -19,14 +23,23 @@ user_mnemonic = "estate elephant vibrant hat slogan unlock uniform short bicycle
 algod_address = "https://api.testnet.algoexplorer.io"
 # algod_token = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 algod_token = ""
+hashes = ""
 
 # helper function to compile program source
 def compile_program(client, source_code):
     compile_response = client.compile(source_code)
     print(compile_response)
     return base64.b64decode(compile_response["result"])
+    # return base64.b64decode(compile_response['hash'])
     
-
+# helper function to compile program source
+def compile_program_escrow(client, source_code):
+    compile_response = client.compile(source_code)
+    global hashes
+    hashes = compile_response['hash']
+    return base64.b64decode(compile_response["result"])
+   
+    
 
 # helper function that converts a mnemonic passphrase into a private signing key
 def get_private_key_from_mnemonic(mn):
@@ -144,10 +157,15 @@ def opt_in_app(client, private_key, index):
 
 
 # call application
-def call_app(client, private_key, index, app_args):
+def call_app(client, private_key, index, app_args, escrow_program):
     # declare sender
     sender = account.address_from_private_key(private_key)
     print("Call from account:", sender)
+
+    # preparo el escrow para signar por la misma addres del escrow
+    lsig_escrow = transaction.LogicSigAccount(escrow_program)
+    escrow_sender = lsig_escrow.address()
+    print("ESCROW ADDRESS: ",escrow_sender)
 
     # get node suggested parameters
     params = client.suggested_params()
@@ -155,15 +173,47 @@ def call_app(client, private_key, index, app_args):
     params.flat_fee = True
     params.fee = 1000
 
+    
+    # create payTx
+    amount = int(2000000)
+    note = "Desde Escrow".encode()
+    txnEscrow = transaction.PaymentTxn(escrow_sender, params, "RAKCEM2YMNJ5UPDHKLAI2HVM6K6AGLWW6MGG2FGS5IPN4UKFHMDS5MKSYM", amount, None, note)
+    # lstx_preSigned = transaction.LogicSigTransaction(txnEscrow, lsig_escrow)
+    # assert lstx.verify()
+
+    # send them over network
+    # output = client.send_transaction(lstx)
+    # print("escrow payment:")
+    # print(output)
+    
+ 
+    params.flat_fee = True
+    params.fee = 1000
+
+    
+    
     # create unsigned transaction
     txn = transaction.ApplicationNoOpTxn(sender, params, index, app_args)
+
+    transaction.assign_group_id([txnEscrow, txn])
+
+    lstx_preSigned = transaction.LogicSigTransaction(txnEscrow, lsig_escrow)
+    assert lstx_preSigned.verify()
+    lstx = transaction.LogicSigTransaction(txnEscrow, lsig_escrow)
+
+    # transaction.assign_group_id([lstx, txn])
 
     # sign transaction
     signed_txn = txn.sign(private_key)
     tx_id = signed_txn.transaction.get_txid()
 
-    # send transaction
-    client.send_transactions([signed_txn])
+    client.send_transactions([lstx, signed_txn])
+
+    
+
+
+    # # send transaction
+    # client.send_transactions([signed_txn])
 
     # await confirmation
     wait_for_confirmation(client, tx_id)
@@ -327,7 +377,23 @@ def main():
     )
     # compile program to binary
     approval_program_compiled = compile_program(algod_client, approval_program_teal)
-    print(approval_program_compiled)
+    # print("Contrato Voting App:")
+    # print(approval_program_compiled)
+
+
+    # get PyTeal escrow voting
+    escrow_program_ast = voting_escrow()
+    # compile program to TEAL assembly
+    escrow_program_teal = compileTeal(
+        escrow_program_ast, mode=Mode.Signature, version=5
+    )
+    # compile program to binary
+    escrow_program_compiled = compile_program_escrow(algod_client, escrow_program_teal)
+    print("Contrato Escrow App:")
+    # print(escrow_program_compiled)
+    print(hashes)
+
+
     # get PyTeal clear state program
     clear_state_program_ast = clear_state_program()
     # compile program to TEAL assembly
@@ -385,7 +451,7 @@ def main():
     wait_for_round(algod_client, voteBegin)
 
     # call application without arguments
-    call_app(algod_client, user_private_key, app_id, [b"vote", b"choiceA"])
+    call_app(algod_client, user_private_key, app_id, [b"vote", b"choiceA"], escrow_program_compiled)
 
     # read local state of application from user account
     print(

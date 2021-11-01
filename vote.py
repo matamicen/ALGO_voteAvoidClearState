@@ -44,14 +44,16 @@ def approval_program():
         )
     )
 
-    choice = Txn.application_args[1]
+    choice = Gtxn[1].application_args[1]
     choice_tally = App.globalGet(choice)
     on_vote = Seq(
         [
             Assert(
                 And(
+              
                     Global.round() >= App.globalGet(Bytes("VoteBegin")),
                     Global.round() <= App.globalGet(Bytes("VoteEnd")),
+                    # Gtxn[0].amount() > Int(3000000), funcioan esta condicion contra la Gtxn[0]
                 )
             ),
             get_vote_of_sender,
@@ -59,27 +61,43 @@ def approval_program():
             App.globalPut(choice, choice_tally + Int(1)),
             App.localPut(Int(0), Bytes("voted"), choice),
 
-            InnerTxnBuilder.Begin(),
-            InnerTxnBuilder.SetFields(
-                {
-                    TxnField.type_enum: TxnType.Payment,
-                    TxnField.amount: Int(2000000),
-                    TxnField.receiver: Txn.sender(),
-                }
-            ),
-            InnerTxnBuilder.Submit(),
+            # InnerTxnBuilder.Begin(),
+            # InnerTxnBuilder.SetFields(
+            #     {
+            #         TxnField.type_enum: TxnType.Payment,
+            #         TxnField.amount: Int(2000000),
+            #         TxnField.receiver: Txn.sender(),
+            #     }
+            # ),
+            # InnerTxnBuilder.Submit(),
 
             Return(Int(1)),
         ]
     )
 
-    program = Cond(
+    handle_single = Cond(
         [Txn.application_id() == Int(0), on_creation],
         [Txn.on_completion() == OnComplete.DeleteApplication, Return(is_creator)],
         [Txn.on_completion() == OnComplete.UpdateApplication, Return(is_creator)],
         [Txn.on_completion() == OnComplete.CloseOut, on_closeout],
         [Txn.on_completion() == OnComplete.OptIn, on_register],
-        [Txn.application_args[0] == Bytes("vote"), on_vote],
+    )
+
+    handle_double = Cond(
+        [Gtxn[1].application_args[0] == Bytes("vote"), on_vote],
+    )
+
+    # program = Cond(
+    #     [Txn.application_id() == Int(0), on_creation],
+    #     [Txn.on_completion() == OnComplete.DeleteApplication, Return(is_creator)],
+    #     [Txn.on_completion() == OnComplete.UpdateApplication, Return(is_creator)],
+    #     [Txn.on_completion() == OnComplete.CloseOut, on_closeout],
+    #     [Txn.on_completion() == OnComplete.OptIn, on_register],
+    #     [Gtxn[1].application_args[0] == Bytes("vote"), on_vote],
+    # )
+    program = Cond(
+         [Global.group_size() == Int(1), handle_single],
+         [Global.group_size() == Int(2), handle_double],
     )
 
     return program
