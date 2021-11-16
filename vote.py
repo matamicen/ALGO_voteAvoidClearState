@@ -39,8 +39,9 @@ def approval_program():
 
     on_register = Return(
         And(
-            Global.round() >= App.globalGet(Bytes("RegBegin")),
-            Global.round() <= App.globalGet(Bytes("RegEnd")),
+            # Global.round() >= App.globalGet(Bytes("RegBegin")),
+            # Global.round() <= App.globalGet(Bytes("RegEnd")),
+            Int(1)
         )
     )
 

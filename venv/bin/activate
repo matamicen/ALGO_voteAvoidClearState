@@ -37,7 +37,7 @@ deactivate () {
 # unset irrelevant variables
 deactivate nondestructive
 
-VIRTUAL_ENV="/Users/matiasmicenmacher/Documents/algorand/voting/venv"
+VIRTUAL_ENV="/Users/matiasmicenmacher/Documents/algorand/votingClearState/venv"
 export VIRTUAL_ENV
 
 _OLD_VIRTUAL_PATH="$PATH"

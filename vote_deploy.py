@@ -460,6 +460,14 @@ def main():
             algod_client, account.address_from_private_key(user_private_key), app_id
         ),
     )
+    # clear state para poder votar de nuevo
+    clear_app(algod_client, user_private_key, app_id)
+    
+    # opt in de nuevo
+    opt_in_app(algod_client, user_private_key, app_id)
+
+    # intento votar de nuevo
+    call_app(algod_client, user_private_key, app_id, [b"vote", b"choiceB"], escrow_program_compiled)
 
     # wait for registration period to start
     wait_for_round(algod_client, voteEnd)

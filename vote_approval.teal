@@ -71,15 +71,7 @@ int OptIn
 bnz main_l14
 err
 main_l14:
-global Round
-byte "RegBegin"
-app_global_get
->=
-global Round
-byte "RegEnd"
-app_global_get
-<=
-&&
+int 1
 return
 main_l15:
 int 0
