@@ -13,20 +13,25 @@ def voting_escrow():
         receiver (str): Base 32 Algorand address of the receiver.
     """
 
-    is_payment = Gtxn[0].type_enum() == TxnType.Payment
-    is_single_tx = Global.group_size() == Int(2)
-    # is_correct_receiver = Txn.receiver() == Addr(receiver)
-    no_close_out_addr = Gtxn[0].close_remainder_to() == Global.zero_address()
-    no_rekey_addr = Gtxn[0].rekey_to() == Global.zero_address()
-    acceptable_fee = Gtxn[0].fee() <= Int(1000)
+    # is_payment = Gtxn[0].type_enum() == TxnType.Payment
+    # is_single_tx = Global.group_size() == Int(2)
+    # # is_correct_receiver = Txn.receiver() == Addr(receiver)
+    # no_close_out_addr = Gtxn[0].close_remainder_to() == Global.zero_address()
+    # no_rekey_addr = Gtxn[0].rekey_to() == Global.zero_address()
+    # acceptable_fee = Gtxn[0].fee() <= Int(1000)
+
+    # return And(
+    #     is_payment,
+    #     is_single_tx,
+    #     # is_correct_receiver,
+    #     no_close_out_addr,
+    #     no_rekey_addr,
+    #     acceptable_fee,
+    # )
+    is_not_clearState =  Txn.on_completion() != OnComplete.ClearState
 
     return And(
-        is_payment,
-        is_single_tx,
-        # is_correct_receiver,
-        no_close_out_addr,
-        no_rekey_addr,
-        acceptable_fee,
+        is_not_clearState
     )
 
 
@@ -35,7 +40,7 @@ if __name__ == "__main__":
     #     "ZZAF5ARA4MEC5PVDOP64JM5O5MQST63Q2KOY2FLYFLXXD3PFSNJJBYAFZM"
     # )
        program = voting_escrow()
-       print(compileTeal(program, mode=Mode.Signature, version=3))
+       print(compileTeal(program, mode=Mode.Signature, version=5))
 
 
 

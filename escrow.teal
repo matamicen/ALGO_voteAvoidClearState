@@ -1,0 +1,5 @@
+#pragma version 5
+txn OnCompletion
+int ClearState
+!=
+return

@@ -14,9 +14,12 @@ from escrow import voting_escrow
 # user declared account mnemonics
 # creator_mnemonic = "disagree salon thank cool envelope shove urge gravity demise arena large nephew found fine country tuna frozen view pact club wave wall alert above course"
 # creator_mnemonic = "jaguar orphan industry valid robot waste eight deal fury win cricket sunset interest beauty cause fat insect anger easy round target face pink absorb acoustic"
-# creator_address = MEBVPYXHXJIS2RBGIL62HM4ARR5B4U46HJ6KS2T3ACWPVSZEE4NOLI6CJM
-creator_mnemonic = "fortune tumble shoot material solve face visit size fatal public pulp size bomb brisk jacket junior dad rack pitch quality vapor pioneer sea abstract bullet"
-user_mnemonic = "estate elephant vibrant hat slogan unlock uniform short bicycle regret around able valley boil turkey always modify broccoli indicate fork together install address ability lounge"
+
+# creator_mnemonic = "fortune tumble shoot material solve face visit size fatal public pulp size bomb brisk jacket junior dad rack pitch quality vapor pioneer sea abstract bullet"
+# creator_address = RAKCEM2YMNJ5UPDHKLAI2HVM6K6AGLWW6MGG2FGS5IPN4UKFHMDS5MKSYM
+creator_mnemonic = "estate elephant vibrant hat slogan unlock uniform short bicycle regret around able valley boil turkey always modify broccoli indicate fork together install address ability lounge"
+# voting_address = MEBVPYXHXJIS2RBGIL62HM4ARR5B4U46HJ6KS2T3ACWPVSZEE4NOLI6CJM
+user_mnemonic = "fortune tumble shoot material solve face visit size fatal public pulp size bomb brisk jacket junior dad rack pitch quality vapor pioneer sea abstract bullet"
 
 # user declared algod connection parameters. Node must have EnableDeveloperAPI set to true in its config
 # algod_address = "http://localhost:4001"
@@ -127,10 +130,22 @@ def create_app(
 
 
 # opt-in to application
-def opt_in_app(client, private_key, index):
+def opt_in_app(client, private_key, index,escrow_program):
     # declare sender
-    sender = account.address_from_private_key(private_key)
-    print("OptIn from account: ", sender)
+    # sender = account.address_from_private_key(private_key)
+    # print("OptIn from account: ", sender)
+
+
+    # preparo el escrow para signar por la misma addres del escrow
+    lsig_escrow = transaction.LogicSigAccount(escrow_program)
+    escrow_sender = lsig_escrow.address()
+    print("ESCROW ADDRESS: ",escrow_sender)
+
+    # get node suggested parameters
+    params = client.suggested_params()
+    # comment out the next two (2) lines to use suggested fees
+    params.flat_fee = True
+    params.fee = 1000
 
     # get node suggested parameters
     params = client.suggested_params()
@@ -139,21 +154,25 @@ def opt_in_app(client, private_key, index):
     params.fee = 1000
 
     # create unsigned transaction
-    txn = transaction.ApplicationOptInTxn(sender, params, index)
+    # txn = transaction.ApplicationOptInTxn(sender, params, index)
+    txn = transaction.ApplicationOptInTxn(escrow_sender, params, index)
 
     # sign transaction
-    signed_txn = txn.sign(private_key)
-    tx_id = signed_txn.transaction.get_txid()
+    # signed_txn = txn.sign(private_key)
+    # signed_txn = txn.sign(lsig_escrow)
+    # tx_id = signed_txn.transaction.get_txid()
 
+    lstx = transaction.LogicSigTransaction(txn, lsig_escrow)
     # send transaction
-    client.send_transactions([signed_txn])
+    # client.send_transactions([signed_txn])
+    client.send_transactions([lstx])
 
     # await confirmation
-    wait_for_confirmation(client, tx_id)
+    # wait_for_confirmation(client, lstx)
 
     # display results
-    transaction_response = client.pending_transaction_info(tx_id)
-    print("OptIn to app-id:", transaction_response["txn"]["txn"]["apid"])
+    # transaction_response = client.pending_transaction_info(tx_id)
+    # print("OptIn to app-id:", transaction_response["txn"]["txn"]["apid"])
 
 
 # call application
@@ -193,8 +212,8 @@ def call_app(client, private_key, index, app_args, escrow_program):
     
     
     # create unsigned transaction
-    txn = transaction.ApplicationNoOpTxn(sender, params, index, app_args)
-
+    # txn = transaction.ApplicationNoOpTxn(sender, params, index, app_args)
+    txn = transaction.ApplicationNoOpTxn(escrow_sender, params, index, app_args)
     transaction.assign_group_id([txnEscrow, txn])
 
     lstx_preSigned = transaction.LogicSigTransaction(txnEscrow, lsig_escrow)
@@ -204,8 +223,10 @@ def call_app(client, private_key, index, app_args, escrow_program):
     # transaction.assign_group_id([lstx, txn])
 
     # sign transaction
-    signed_txn = txn.sign(private_key)
-    tx_id = signed_txn.transaction.get_txid()
+    # signed_txn = txn.sign(private_key)
+    # signed_txn = txn.sign(lsig_escrow)
+    # tx_id = signed_txn.transaction.get_txid()
+    signed_txn = transaction.LogicSigTransaction(txn, lsig_escrow)
 
     client.send_transactions([lstx, signed_txn])
 
@@ -216,7 +237,7 @@ def call_app(client, private_key, index, app_args, escrow_program):
     # client.send_transactions([signed_txn])
 
     # await confirmation
-    wait_for_confirmation(client, tx_id)
+    # wait_for_confirmation(client, tx_id)
 
 
 def format_state(state):
@@ -318,9 +339,14 @@ def close_out_app(client, private_key, index):
 
 
 # clear application
-def clear_app(client, private_key, index):
+def clear_app(client, private_key, index, escrow_program):
     # declare sender
-    sender = account.address_from_private_key(private_key)
+    # sender = account.address_from_private_key(private_key)
+
+    # preparo el escrow para signar por la misma addres del escrow
+    lsig_escrow = transaction.LogicSigAccount(escrow_program)
+    escrow_sender = lsig_escrow.address()
+    print("ESCROW ADDRESS: ",escrow_sender)
 
     # get node suggested parameters
     params = client.suggested_params()
@@ -329,21 +355,21 @@ def clear_app(client, private_key, index):
     params.fee = 1000
 
     # create unsigned transaction
-    txn = transaction.ApplicationClearStateTxn(sender, params, index)
+    txn = transaction.ApplicationClearStateTxn(escrow_sender, params, index)
 
     # sign transaction
-    signed_txn = txn.sign(private_key)
-    tx_id = signed_txn.transaction.get_txid()
-
+    # signed_txn = txn.sign(lsig_escrow)
+    # tx_id = signed_txn.transaction.get_txid()
+    signed_txn = transaction.LogicSigTransaction(txn, lsig_escrow)
     # send transaction
     client.send_transactions([signed_txn])
 
-    # await confirmation
-    wait_for_confirmation(client, tx_id)
+    # # await confirmation
+    # wait_for_confirmation(client, tx_id)
 
-    # display results
-    transaction_response = client.pending_transaction_info(tx_id)
-    print("Cleared app-id:", transaction_response["txn"]["txn"]["apid"])
+    # # display results
+    # transaction_response = client.pending_transaction_info(tx_id)
+    # print("Cleared app-id:", transaction_response["txn"]["txn"]["apid"])
 
 
 # convert 64 bit integer i to byte string
@@ -446,7 +472,7 @@ def main():
     wait_for_round(algod_client, regBegin)
 
     # opt-in to application
-    opt_in_app(algod_client, user_private_key, app_id)
+    opt_in_app(algod_client, user_private_key, app_id, escrow_program_compiled)
 
     wait_for_round(algod_client, voteBegin)
 
@@ -460,11 +486,11 @@ def main():
             algod_client, account.address_from_private_key(user_private_key), app_id
         ),
     )
-    # clear state para poder votar de nuevo
-    clear_app(algod_client, user_private_key, app_id)
-    
+    # clear state para poder votar de nuevo  (tira error aca, no deja hacer clear state por el escrow! no puede votar dos veces)
+    clear_app(algod_client, user_private_key, app_id, escrow_program_compiled)
+
     # opt in de nuevo
-    opt_in_app(algod_client, user_private_key, app_id)
+    opt_in_app(algod_client, user_private_key, app_id, escrow_program_compiled)
 
     # intento votar de nuevo
     call_app(algod_client, user_private_key, app_id, [b"vote", b"choiceB"], escrow_program_compiled)
@@ -502,7 +528,7 @@ def main():
     delete_app(algod_client, creator_private_key, app_id)
 
     # clear application from user account
-    clear_app(algod_client, user_private_key, app_id)
+    clear_app(algod_client, user_private_key, app_id, escrow_program_compiled)
 
 
 if __name__ == "__main__":
